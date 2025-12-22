@@ -9,11 +9,11 @@ interface UserRepo {
 
     suspend fun getById(id: UUID): UserModel?
 
-    suspend fun create(user: UserModel): Boolean
+    suspend fun create(user: UserModel): UUID?
 
     suspend fun delete(id: UUID): Boolean
 
-    suspend fun upsert(user: UserModel): Boolean
+    suspend fun update(user: UserModel): Boolean
 
     suspend fun userExists(id: UUID): Boolean
 }

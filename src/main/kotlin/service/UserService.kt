@@ -21,14 +21,14 @@ class UserService(private val userRepo: UserRepo) {
 
     suspend fun createUser(user: UserDTO): ApiResponse<UserDTO> {
         val user = userRepo.create(user.mapToUserModel())
-        return if (user) {
+        return if (user != null) {
             ApiResponse()
         } else
             ApiResponse(code = 500, message = "User not created")
     }
 
     suspend fun updateUser(user: UserDTO): ApiResponse<UserDTO> {
-        val user = userRepo.upsert(user.mapToUserModel())
+        val user = userRepo.update(user.mapToUserModel())
         return if (user) {
             ApiResponse()
         } else

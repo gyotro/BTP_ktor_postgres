@@ -6,17 +6,28 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Serializable
-data class ExposedUser(val name: String, val age: Int)
+data class ExposedUser(val id: String = "", val firstname: String, val lastname: String, val email: String)
 
-class UserService(database: Database) {
+class UserServiceDB(database: Database) {
     object Users : Table() {
-        val id = integer("id").autoIncrement()
-        val name = varchar("name", length = 50)
-        val age = integer("age")
+        val id = uuid("id").autoGenerate()
+        val firstname = varchar("name", length = 50)
+        val lastname = varchar("name", length = 50)
+        val email = varchar("name", length = 50)
 
         override val primaryKey = PrimaryKey(id)
+    }
+
+    suspend fun readAll(): List<ExposedUser>{
+        return dbQuery {
+            Users.selectAll()
+                .map { ExposedUser(it[Users.id].toString(), it[Users.firstname], it[Users.lastname], it[Users.email]) }
+        }
     }
 
     init {
@@ -25,34 +36,47 @@ class UserService(database: Database) {
         }
     }
 
-    suspend fun create(user: ExposedUser): Int = dbQuery {
+    suspend fun create(user: ExposedUser): UUID = dbQuery {
         Users.insert {
-            it[name] = user.name
-            it[age] = user.age
+            it[firstname] = user.firstname
+            it[lastname] = user.lastname
+            it[email] = user.email
         }[Users.id]
     }
 
-    suspend fun read(id: Int): ExposedUser? {
+    suspend fun read(id: UUID): ExposedUser? {
         return dbQuery {
             Users.selectAll()
-                .where { Users.id eq id }
-                .map { ExposedUser(it[Users.name], it[Users.age]) }
+                .where { Users.id.eq(id) }
+                .map { ExposedUser(it[Users.id].toString(), it[Users.firstname], it[Users.lastname], it[Users.email]) }
                 .singleOrNull()
         }
     }
 
-    suspend fun update(id: Int, user: ExposedUser) {
-        dbQuery {
-            Users.update({ Users.id eq id }) {
-                it[name] = user.name
-                it[age] = user.age
+    suspend fun update(id: UUID, user: ExposedUser): Boolean {
+        return try {
+            dbQuery {
+                Users.update({ Users.id eq id }) {
+                    it[firstname] = user.firstname
+                    it[lastname] = user.lastname
+                    it[email] = user.email
+                }
             }
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 
-    suspend fun delete(id: Int) {
-        dbQuery {
-            Users.deleteWhere { Users.id.eq(id) }
+    suspend fun delete(id: UUID): Boolean {
+        return try {
+            dbQuery {
+                Users.deleteWhere { Users.id eq id }
+            }
+            true
+        } catch (e: Exception) {
+            false
+
         }
     }
 

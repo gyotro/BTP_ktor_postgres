@@ -19,7 +19,7 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.serialization.kotlinx.json)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-uuid:1.6.0")
+    //implementation("org.jetbrains.kotlinx:kotlinx-serialization-uuid")
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
