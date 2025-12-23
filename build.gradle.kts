@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.h2)
     implementation(libs.postgresql)
+    implementation("com.zaxxer:HikariCP:5.1.0")
     implementation(libs.ktor.server.netty)
     implementation("org.slf4j:slf4j-api:2.0.9")
     implementation(libs.logback.classic)
