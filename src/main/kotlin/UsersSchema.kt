@@ -11,14 +11,14 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @Serializable
-data class ExposedUser(val id: String = "", val firstname: String, val lastname: String, val email: String)
+data class ExposedUser(val id: String? = null, val firstname: String, val lastname: String, val email: String)
 
-class UserServiceDB(database: Database) {
-    object Users : Table() {
+class UserServiceDB(val database: Database) {
+    object Users : Table("users") {
         val id = uuid("id").autoGenerate()
-        val firstname = varchar("name", length = 50)
-        val lastname = varchar("name", length = 50)
-        val email = varchar("name", length = 50)
+        val firstname = varchar("firstname", length = 50)
+        val lastname = varchar("lastname", length = 50)
+        val email = varchar("email", length = 255).uniqueIndex()
 
         override val primaryKey = PrimaryKey(id)
     }
@@ -32,7 +32,7 @@ class UserServiceDB(database: Database) {
 
     init {
         transaction(database) {
-            SchemaUtils.create(Users)
+            SchemaUtils.createMissingTablesAndColumns(Users)
         }
     }
 
@@ -79,8 +79,7 @@ class UserServiceDB(database: Database) {
 
         }
     }
-
     private suspend fun <T> dbQuery(block: suspend () -> T): T =
-        newSuspendedTransaction(Dispatchers.IO) { block() }
+        newSuspendedTransaction(Dispatchers.IO, db = database) { block() }
 }
 

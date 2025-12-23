@@ -1,0 +1,28 @@
+applications:
+  - name: btp-ktor-postgres
+    memory: 768M
+    instances: 1
+    path: build/libs/BTP_ktor_postgres-all.jar
+    random-route: true
+    buildpacks:
+      - sap_java_buildpack_jakarta_2_42
+
+    # Cloud Foundry uses the Java buildpack automatically if it detects a JVM app
+    env:
+      # Optional: lets you switch which bound postgres instance to pick from VCAP
+      DB_SERVICE_NAME: postgreSQL-dev
+
+      # Optional: SSL mode for JDBC. If verify-full fails, switch to require.
+      PG_SSLMODE: verify-full
+
+      # Hikari pool tuning (optional)
+      DB_POOL_MAX: "10"
+      DB_POOL_MIN: "2"
+
+      # JVM memory tuning (safe defaults on CF)
+      JAVA_OPTS: >
+        -XX:MaxRAMPercentage=75
+        -Dfile.encoding=UTF-8
+
+    services:
+      - postgreSQL-dev

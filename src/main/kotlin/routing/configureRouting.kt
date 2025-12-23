@@ -12,8 +12,10 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import org.koin.ktor.ext.inject
 
-fun Application.configureRouting(userService: UserService) {
+fun Application.configureRouting() {
+    val userService by inject<UserService>()
     routing {
         get("/") {
             call.respondText("Hello World!")
