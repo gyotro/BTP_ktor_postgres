@@ -9,6 +9,8 @@ import org.koin.ktor.ext.getKoin
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 import com.postgres.di.appModule
+import io.ktor.server.application.ApplicationStopped
+
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -35,11 +37,13 @@ fun Application.module() {
     getKoin().get<UserServiceDB>()
 
     // Close Hikari on shutdown
-    environment.monitor.subscribe(ApplicationStopped) {
+    monitor.subscribe(ApplicationStopped) {
         getKoin().get<HikariDataSource>().close()
     }
 
     configureSerialization()
     configureMonitoring()
+    configureErrors()
     configureRouting()
+
 }

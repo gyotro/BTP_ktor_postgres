@@ -7,6 +7,7 @@ import java.util.UUID
 
 fun UserDTO.mapToUserModel(): UserModel {
     return UserModel(
+        id = this.id,
         firstName = this.firstName,
         lastName = this.lastName,
         email = this.email

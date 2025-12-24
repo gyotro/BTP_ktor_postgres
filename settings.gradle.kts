@@ -1,4 +1,4 @@
-rootProject.name = "btp"
+rootProject.name = "btp-ktor-postgres"
 
 dependencyResolutionManagement {
     repositories {

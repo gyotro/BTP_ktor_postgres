@@ -7,8 +7,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @Serializable
 data class ExposedUser(val id: String? = null, val firstname: String, val lastname: String, val email: String)
@@ -53,9 +51,12 @@ class UserServiceDB(val database: Database) {
         }
     }
 
-    suspend fun update(id: UUID, user: ExposedUser): Boolean {
+    suspend fun update(id: UUID?, user: ExposedUser): Boolean {
         return try {
             dbQuery {
+                if (id == null) {
+                    return@dbQuery false
+                }
                 Users.update({ Users.id eq id }) {
                     it[firstname] = user.firstname
                     it[lastname] = user.lastname

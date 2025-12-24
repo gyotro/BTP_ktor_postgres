@@ -2,6 +2,19 @@
 
 This project is a sample Ktor application that connects to a PostgreSQL database. It is designed for deployment on the SAP Business Technology Platform (BTP), Cloud Foundry environment, but it can also be run locally.
 
+## What it Does
+
+This application provides a simple REST API for managing users. It demonstrates a basic CRUD (Create, Read, Update, Delete) functionality.
+
+### API Endpoints
+
+-   `GET /`: A simple health-check endpoint that returns "Hello World!".
+-   `GET /users`: Retrieves a list of all users.
+-   `POST /users`: Creates a new user. The request body should contain a JSON object with user details.
+-   `GET /users/{id}`: Retrieves a specific user by their ID.
+-   `PUT /users/{id}`: Updates an existing user's information. The request body should contain the updated user data.
+-   `DELETE /users/{id}`: Deletes a user by their ID.
+
 - [Ktor Documentation](https://ktor.io/docs/home.html)
 - [Ktor GitHub page](https://github.com/ktorio/ktor)
 - The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.

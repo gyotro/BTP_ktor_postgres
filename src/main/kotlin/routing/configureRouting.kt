@@ -13,6 +13,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import org.koin.ktor.ext.inject
+import java.util.UUID
 
 fun Application.configureRouting() {
     val userService by inject<UserService>()
@@ -35,9 +36,10 @@ fun Application.configureRouting() {
                 val result = userService.getUserById(id)
                 call.respond(result)
             }
-            put() {
-                val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
+            put("/{id}") {
+                val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
                 val user = call.receive<UserDTO>()
+                user.id = UUID.fromString(id) ?: throw IllegalArgumentException("Invalid ID")
                 val result = userService.updateUser(user)
                 call.respond(result)
             }

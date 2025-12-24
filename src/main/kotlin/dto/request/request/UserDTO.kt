@@ -7,7 +7,7 @@ import java.util.UUID
 @Serializable
 data class UserDTO(
     @Serializable(with = UUIDSerializer::class)
-    val id: UUID?,
+    var id: UUID? = null,
     val firstName: String,
     val lastName: String,
     val email: String

@@ -4,8 +4,26 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
+tasks.test {
+    enabled = false
+}
+
 group = "com.postgres"
 version = "1.0.1"
+
+base {
+    archivesName.set("btp-ktor-postgres")
+}
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
@@ -32,4 +50,6 @@ dependencies {
     implementation(libs.ktor.server.config.yaml)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+    implementation(libs.ktor.server.status.pages)
+
 }
