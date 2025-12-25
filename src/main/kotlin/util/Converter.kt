@@ -1,6 +1,6 @@
 package com.postgres.util
 
-import com.postgres.ExposedUser
+import com.postgres.db.ExposedUser
 import com.postgres.dto.request.request.UserDTO
 import com.postgres.model.UserModel
 import java.util.UUID

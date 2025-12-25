@@ -6,6 +6,8 @@ kotlin = "2.2.21"
 ktor = "3.3.2"
 logback = "1.4.14"
 postgres = "42.7.8"
+java-jwt = "4.5.0"
+jwks-rsa = "0.22.1"
 
 [libraries]
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
@@ -26,7 +28,8 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
-
+java-jwt = { module = "com.auth0:java-jwt", version.ref = "java-jwt" }
+jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "jwks-rsa" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

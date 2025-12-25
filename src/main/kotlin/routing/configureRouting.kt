@@ -3,6 +3,7 @@ package com.postgres.routing
 import com.postgres.dto.request.request.UserDTO
 import com.postgres.service.UserService
 import io.ktor.server.application.Application
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -18,35 +19,37 @@ import java.util.UUID
 fun Application.configureRouting() {
     val userService by inject<UserService>()
     routing {
-        get("/") {
-            call.respondText("Hello World!")
-        }
-        route("/users") {
-            get {
-                val result = userService.getAllUsers()
-                call.respond(result)
+        authenticate("xsuaa") {
+            get("/") {
+                call.respondText("Hello World!")
             }
-            post() {
-                val user = call.receive<UserDTO>()
-                val result = userService.createUser(user)
-                call.respond(result)
-            }
-            get("/{id}") {
-                val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
-                val result = userService.getUserById(id)
-                call.respond(result)
-            }
-            put("/{id}") {
-                val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
-                val user = call.receive<UserDTO>()
-                user.id = UUID.fromString(id) ?: throw IllegalArgumentException("Invalid ID")
-                val result = userService.updateUser(user)
-                call.respond(result)
-            }
-            delete("/{id}") {
-                val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
-                val result = userService.deleteUser(id)
-                call.respond(result)
+            route("/users") {
+                get {
+                    val result = userService.getAllUsers()
+                    call.respond(result)
+                }
+                post() {
+                    val user = call.receive<UserDTO>()
+                    val result = userService.createUser(user)
+                    call.respond(result)
+                }
+                get("/{id}") {
+                    val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
+                    val result = userService.getUserById(id)
+                    call.respond(result)
+                }
+                put("/{id}") {
+                    val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
+                    val user = call.receive<UserDTO>()
+                    user.id = UUID.fromString(id) ?: throw IllegalArgumentException("Invalid ID")
+                    val result = userService.updateUser(user)
+                    call.respond(result)
+                }
+                delete("/{id}") {
+                    val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid ID")
+                    val result = userService.deleteUser(id)
+                    call.respond(result)
+                }
             }
         }
     }

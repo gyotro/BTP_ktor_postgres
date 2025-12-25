@@ -1,6 +1,6 @@
 package com.postgres.di
 
-import com.postgres.UserServiceDB
+import com.postgres.db.UserServiceDB
 import com.postgres.db.DbConfig
 import com.postgres.db.DbCreds
 import com.postgres.repository.UserRepo

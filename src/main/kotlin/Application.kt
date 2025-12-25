@@ -1,5 +1,6 @@
 package com.postgres
 
+import com.postgres.db.UserServiceDB
 import com.postgres.routing.configureRouting
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
@@ -9,6 +10,7 @@ import org.koin.ktor.ext.getKoin
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 import com.postgres.di.appModule
+import com.postgres.security.configureXsuaaAuthentication
 import io.ktor.server.application.ApplicationStopped
 
 
@@ -44,6 +46,7 @@ fun Application.module() {
     configureSerialization()
     configureMonitoring()
     configureErrors()
+    configureXsuaaAuthentication()
     configureRouting()
 
 }

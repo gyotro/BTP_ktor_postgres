@@ -1,7 +1,7 @@
 package com.postgres.repository
 
-import com.postgres.ExposedUser
-import com.postgres.UserServiceDB
+import com.postgres.db.ExposedUser
+import com.postgres.db.UserServiceDB
 import com.postgres.model.UserModel
 import com.postgres.util.mapToUserModel
 import java.util.UUID

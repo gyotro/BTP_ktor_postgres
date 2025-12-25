@@ -51,5 +51,7 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
     implementation(libs.ktor.server.status.pages)
+    implementation(libs.java.jwt)
+    implementation(libs.jwks.rsa)
 
 }

@@ -1,4 +1,4 @@
-package com.postgres
+package com.postgres.db
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.Serializable

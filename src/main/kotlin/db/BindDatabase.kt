@@ -1,6 +1,5 @@
 package com.postgres.db
 
-import com.postgres.UserServiceDB
 import io.ktor.server.application.*
 import org.jetbrains.exposed.sql.Database
 import org.koin.ktor.ext.inject
