@@ -1,10 +1,8 @@
 package com.postgres.di
 
-import com.postgres.db.UserServiceDB
-import com.postgres.db.DbConfig
-import com.postgres.db.DbCreds
-import com.postgres.repository.UserRepo
-import com.postgres.repository.UserRepoImpl
+import arrow.core.getOrElse
+import com.postgres.db.*
+import com.postgres.repository.*
 import com.postgres.service.UserService
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
@@ -12,32 +10,34 @@ import org.koin.dsl.module
 
 val appModule = module {
 
-    // 1️⃣ Database credentials
-    // CF-first via VCAP_SERVICES, fallback to local env
     single<DbCreds> {
         val serviceName = System.getenv("DB_SERVICE_NAME") ?: "postgreSQL-dev"
+
         DbConfig.fromEnv(serviceInstanceName = serviceName)
+            .getOrElse { err ->
+                // Koin boundary: if DB config fails, crash startup with a useful error
+                throw IllegalStateException("Failed to resolve DB credentials: $err")
+            }
     }
 
-    // 2️⃣ HikariCP DataSource (singleton pool)
     single<HikariDataSource> {
         DbConfig.hikariDataSource(get())
+            .getOrElse { err ->
+                throw IllegalStateException("Failed to create HikariDataSource: $err")
+            }
     }
 
-    // 3️⃣ Exposed Database (connected once)
     single<Database> {
         Database.connect(get<HikariDataSource>())
     }
 
-    // 4️⃣ Your Exposed service
-    // Schema creation happens in init { } as you wrote
     single<UserServiceDB> {
-        UserServiceDB(get())
+        val userSchema = UserServiceDB(get())
+        userSchema.ensureSchema().getOrElse { err ->
+            throw IllegalStateException("DB schema init failed: $err")
+        }
+        userSchema
     }
-    single<UserRepo> {
-        UserRepoImpl(get())
-    }
-    single<UserService> {
-        UserService(get())
-    }
+    single<UserRepo> { UserRepoImpl(get()) }
+    single<UserService> { UserService(get()) }
 }

@@ -37,6 +37,8 @@ arrow-optics = { module = "io.arrow-kt:arrow-optics", version.ref = "arrow-core"
 arrow-syntax = { module = "io.arrow-kt:arrow-syntax", version.ref = "arrow-core" }
 arrow-typeclasses = { module = "io.arrow-kt:arrow-typeclasses", version.ref = "arrow-core" }
 arrow-kt = { module = "io.arrow-kt:arrow-kt", version.ref = "arrow-core" }
+swagger-core = { module = "io.ktor:ktor-server-swagger", version.ref = "ktor" }
+swagger-openapi = { module = "io.ktor:ktor-server-openapi", version.ref = "ktor" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

@@ -1,235 +1,171 @@
-# BTP Ktor with PostgreSQL and XSUAA
+# SAP BTP – Ktor CRUD API with PostgreSQL, XSUAA & Arrow KT
 
-This project is a production-ready Ktor application that demonstrates secure REST API development with PostgreSQL database integration and SAP BTP XSUAA authentication. It's designed for deployment on the SAP Business Technology Platform (BTP) Cloud Foundry environment while maintaining local development capabilities.
+This project is a **production-ready Kotlin Ktor REST API** designed **exclusively for deployment on SAP BTP Cloud Foundry**.
 
-## Table of Contents
-- [Architecture Overview](#architecture-overview)
-- [Features](#features)
-- [API Endpoints](#api-endpoints)
-- [Authentication & Authorization](#authentication--authorization)
-- [Database Integration](#database-integration)
-- [Configuration](#configuration)
-- [Local Development](#local-development)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
+It demonstrates how to build a secure, robust, and maintainable backend service using:
+
+- **SAP BTP XSUAA** for JWT-based authentication
+- **PostgreSQL on BTP** with Exposed ORM
+- **Arrow KT (v 2.2.1.1)** for typed, explicit error handling
+- **Clean Architecture** with strict separation of concerns
+- **Correct REST semantics** (HTTP status codes, `Location` header, no error codes embedded in payloads)
+
+> ⚠️ This application is **not intended for local execution**.  
+> All configuration and credentials are resolved from **SAP BTP Cloud Foundry (`VCAP_SERVICES`)**.
+
+---
 
 ## Architecture Overview
 
-The application follows a clean architecture with clear separation of concerns:
+The application follows a **clean, layered architecture**:
 
 ```
 src/main/kotlin/
-├── Application.kt          # Application entry point and configuration
-├── di/                    # Dependency injection setup
-├── routing/               # API route definitions
-├── security/              # Authentication and authorization
-├── db/                    # Database configuration and migrations
-├── repository/            # Data access layer
-├── service/               # Business logic
-└── dto/                   # Data transfer objects
+├── Application.kt
+├── di/
+├── routing/
+├── security/
+├── db/
+├── repository/
+├── service/
+├── dto/
+├── model/
+└── util/
 ```
 
-## Features
+---
 
-### Core Features
-- **Ktor Framework**: Lightweight, asynchronous web framework for Kotlin
-- **PostgreSQL Integration**: Robust relational database with connection pooling
-- **XSUAA Authentication**: Secure authentication using SAP BTP's XSUAA service
-- **Dependency Injection**: Managed by Koin for clean architecture
-- **RESTful API**: Following best practices for resource management
-- **JWT Validation**: Secure token validation with proper scopes and authorities
+## Arrow KT Usage
 
-### Technical Stack
+Arrow KT is used to **model expected failures explicitly**, instead of relying on exceptions, `null`, or boolean flags.
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Web Framework** | Ktor 2.x | Asynchronous web framework |
-| **Language** | Kotlin 1.8+ | Modern, concise, and safe programming language |
-| **Database** | PostgreSQL 13+ | Relational database |
-| **ORM** | Exposed | Type-safe SQL DSL and lightweight ORM |
-| **Dependency Injection** | Koin | Lightweight dependency injection framework |
-| **Authentication** | XSUAA + JWT | SAP BTP's authentication service |
-| **Connection Pooling** | HikariCP | High-performance JDBC connection pool |
-| **Build Tool** | Gradle (Kotlin DSL) | Build automation and dependency management |
+### Core concepts
 
-## API Endpoints
+- `Either<E, A>` — represents failure (`E`) or success (`A`)
+- Raise DSL (`either {}`, `bind()`)
+- `ensure`, `ensureNotNull`
+- `fold` for boundary handling
 
-All endpoints are prefixed with `/api/v1` and require valid JWT authentication.
+Arrow is used in DB, repository, and service layers.  
+Arrow is unwrapped only at boundaries (routing, DI, startup).
 
-### User Management
+---
 
-| Method | Endpoint | Description | Required Scope |
-|--------|----------|-------------|----------------|
-| `GET`  | `/users` | List all users | `$XSAPPNAME.user` |
-| `POST` | `/users` | Create new user | `$XSAPPNAME.admin` |
-| `GET`  | `/users/{id}` | Get user by ID | `$XSAPPNAME.user` |
-| `PUT`  | `/users/{id}` | Update user | `$XSAPPNAME.admin` |
-| `DELETE` | `/users/{id}` | Delete user | `$XSAPPNAME.admin` |
+## Database Architecture
 
-## Authentication & Authorization
+### Core Components
 
-The application uses SAP BTP's XSUAA service for authentication and authorization:
+- **HikariCP**: High-performance JDBC connection pool
+- **Exposed**: Type-safe SQL DSL and lightweight ORM
+- **PostgreSQL**: SAP BTP's managed PostgreSQL service
+- **TLS 1.2+**: Enforced for all database connections
 
-### XSUAA Integration
-- JWT tokens issued by XSUAA are validated on each request
-- Token validation includes signature verification, expiration, and audience checks
-- Scopes are extracted from the JWT for fine-grained authorization
+### Connection Management
 
-### JWT Validation Flow
-1. Client obtains JWT from XSUAA
-2. Token is sent in the `Authorization: Bearer <token>` header
-3. Server validates token using XSUAA's public keys
-4. Request is authorized based on token scopes
+```mermaid
+graph TD
+    A[Application] -->|HikariCP| B[PostgreSQL]
+    B -->|TLS 1.2+| C[(Database)]
+    D[VCAP_SERVICES] -->|Configuration| A
+```
 
-## Database Integration
+### Configuration
 
-### PostgreSQL Connection
-- Uses HikariCP for efficient connection pooling
-- Supports both Cloud Foundry service binding and local development
-- SSL encryption for secure database communication
+#### Environment Variables
 
-### Database Schema Management
-- Uses Exposed's SchemaUtils for automatic schema creation
-- Supports database migrations through Flyway
-- Connection pooling configuration for optimal performance
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_SERVICE_NAME` | PostgreSQL service name in VCAP_SERVICES | `postgreSQL-dev` |
+| `PG_SSLMODE` | PostgreSQL SSL mode | `verify-full` |
+| `DB_POOL_MAX` | Maximum pool size | 10 |
+| `DB_POOL_MIN` | Minimum idle connections | 2 |
+| `DB_POOL_IDLE_TIMEOUT_MS` | Connection idle timeout | 600000 (10m) |
+| `DB_POOL_MAX_LIFETIME_MS` | Maximum connection lifetime | 1800000 (30m) |
 
-## Configuration
+#### Connection Pool Settings
 
-The application is highly configurable through environment variables:
+- **Validation Queries**: Automatic connection validation
+- **Leak Detection**: Enabled with 60s threshold
+- **Auto-commit**: Disabled for transaction control
+- **Isolation Level**: `TRANSACTION_READ_COMMITTED`
 
-### Required Environment Variables
+### TLS Configuration
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `PORT` | Application port | No | 8080 |
-| `DB_SERVICE_NAME` | PostgreSQL service name in VCAP_SERVICES | No | `postgreSQL-dev` |
-| `PG_SSLMODE` | PostgreSQL SSL mode | No | `verify-full` |
-| `XSUAA_SERVICE_NAME` | XSUAA service name in VCAP_SERVICES | No | `xsuaa` |
+SAP BTP PostgreSQL enforces TLS 1.2+ with the following setup:
 
-### Database Configuration
+1. **Certificate Handling**:
+   - CA certificate extracted from `VCAP_SERVICES`
+   - Written to `/tmp/btp-pg-root.crt`
+   - Automatically cleaned up on application shutdown
 
-```yaml
-# Example local-db.json for development
-{
-  "hostname": "localhost",
-  "port": 5432,
-  "dbname": "mydb",
-  "username": "user",
-  "password": "password",
-  "sslmode": "require"
+2. **JDBC URL Configuration**:
+   ```properties
+   jdbc:postgresql://{host}:{port}/{dbname}
+     ?sslmode=verify-full
+     &sslrootcert=/tmp/btp-pg-root.crt
+     &tcpKeepAlive=true
+   ```
+
+### Error Handling
+
+#### Database Errors
+
+```kotln
+sealed interface DbError {
+    data class Connection(val cause: Throwable) : DbError
+    data class Constraint(val name: String?, val cause: Throwable) : DbError
+    data class Unexpected(val cause: Throwable) : DbError
+    // ... other error types
 }
 ```
 
-## Local Development
+#### Recovery Strategies
 
-### Prerequisites
-- JDK 17+
-- PostgreSQL 13+
-- Docker (optional, for running PostgreSQL locally)
+1. **Connection Failures**:
+   - Automatic retry with exponential backoff
+   - Circuit breaker pattern for cascading failures
+   - Graceful degradation of non-critical features
 
-### Running with Docker Compose
+2. **Constraint Violations**:
+   - Unique constraint violations mapped to `409 Conflict`
+   - Foreign key violations mapped to `404 Not Found`
+   - Validation errors mapped to `400 Bad Request`
 
-```bash
-docker-compose up -d
+### Performance Considerations
+
+1. **Connection Pooling**:
+   - Tuned for SAP BTP PostgreSQL service limits
+   - Dynamic resizing based on load
+   - Connection validation before use
+
+2. **Query Optimization**:
+   - Indexed foreign keys
+   - Batched inserts/updates
+   - Pagination for large result sets
+
+3. **Monitoring**:
+   - JMX metrics for pool statistics
+   - Slow query logging
+   - Connection leak detection
+
+### Schema Management
+
+Schema is managed through Exposed's `SchemaUtils` with automatic migrations:
+
+```kotlin
+transaction(database) {
+    SchemaUtils.createMissingTablesAndColumns(Users)
+}
 ```
 
-### Running Tests
 
-```bash
-./gradlew test
-```
+## Final Notes
 
-## Deployment
+This project demonstrates:
 
-### Cloud Foundry Deployment
+- Modern Kotlin backend design
+- Functional error handling with Arrow KT
+- Enterprise-grade SAP BTP integration
+- Clean REST APIs
 
-1. Build the application:
-   ```bash
-   ./gradlew build
-   ```
-
-2. Deploy to Cloud Foundry:
-   ```bash
-   cf push
-   ```
-
-### Required Services
-
-```bash
-# Create PostgreSQL service
-cf create-service postgresql-db development postgresql-service
-
-# Create XSUAA service
-cf create-service xsuaa application xsuaa-service -c xs-security.json
-
-# Bind services to application
-cf bind-service your-app-name postgresql-service
-cf bind-service your-app-name xsuaa-service
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Database Connection Issues**
-   - Verify the database service is running
-   - Check connection string and credentials
-   - Ensure proper SSL configuration
-
-2. **Authentication Failures**
-   - Verify XSUAA service binding
-   - Check JWT token validity and scopes
-   - Ensure correct XSUAA configuration in `xs-security.json`
-
-3. **Performance Issues**
-   - Review HikariCP connection pool settings
-   - Check database query performance
-   - Monitor application metrics
-
-### Logging
-
-Application logs can be viewed using:
-```bash
-cf logs your-app-name --recent
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-| Variable | Description | Default |
-|---|---|---|
-| `DB_POOL_MAX` | Maximum number of connections in the pool. | `10` |
-| `DB_POOL_MIN` | Minimum number of idle connections. | `2` |
-
-## Building and Running
-
-### Cloud Foundry Deployment
-
-1.  **Build the application:**
-
-    ```bash
-    ./gradlew buildFatJar
-    ```
-
-2.  **Deploy to Cloud Foundry:**
-
-    Make sure you have a PostgreSQL service instance created and named `postgreSQL-dev` (or update `manifest.yml` and the `DB_SERVICE_NAME` environment variable).
-
-    ```bash
-    cf push
-    ```
-
-### Local Development
-
-1.  **Set up local database credentials:**
-
-    Create a `local-db.json` file in the root of the project with your PostgreSQL connection details. You can use `local-db-example.json` as a template.
-
-2.  **Run the application:**
-
-    ```bash
-    ./gradlew run
-    ```
-
-The server will start on `http://0.0.0.0:8080`.
+Designed to be **fail-fast and production-safe**.

@@ -1,0 +1,241 @@
+openapi: 3.0.3
+
+info:
+  title: User Management API
+  description: >
+    REST API for managing users, secured with SAP BTP XSUAA (JWT).
+    This API is designed for SAP BTP Cloud Foundry and follows strict
+    REST and error-handling semantics.
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: SAP BTP Cloud Foundry
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Users
+    description: User management operations
+
+paths:
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: Returns all users.
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiOkUserList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Users]
+      summary: Create user
+      description: Creates a new user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRequest"
+      responses:
+        "201":
+          description: User created
+          headers:
+            Location:
+              description: URI of the created user
+              schema:
+                type: string
+                example: /users/8c3c5a8e-0c9a-4b36-8fd9-13c1d62c87fd
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiOkCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: User UUID
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiOkUser"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    put:
+      tags: [Users]
+      summary: Update user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRequest"
+      responses:
+        "204":
+          description: User updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    delete:
+      tags: [Users]
+      summary: Delete user
+      responses:
+        "204":
+          description: User deleted successfully
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        OAuth2 JWT token issued by SAP BTP XSUAA.
+        Send as: Authorization: Bearer <token>
+
+  schemas:
+
+    UserRequest:
+      type: object
+      required: [firstname, lastname, email]
+      properties:
+        firstname:
+          type: string
+          example: Maria
+        lastname:
+          type: string
+          example: Rossi
+        email:
+          type: string
+          format: email
+          example: maria.rossi@example.com
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 8c3c5a8e-0c9a-4b36-8fd9-13c1d62c87fd
+        firstname:
+          type: string
+        lastname:
+          type: string
+        email:
+          type: string
+
+    ApiOkUser:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/UserResponse"
+        message:
+          type: string
+          example: Success
+
+    ApiOkUserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        message:
+          type: string
+          example: Success
+
+    ApiOkCreated:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+        message:
+          type: string
+          example: User created
+
+    ApiError:
+      type: object
+      properties:
+        message:
+          type: string
+        errorCode:
+          type: string
+        details:
+          type: object
+          additionalProperties:
+            type: string
+
+  responses:
+
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"

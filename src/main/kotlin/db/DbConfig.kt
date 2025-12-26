@@ -1,5 +1,10 @@
 package com.postgres.db
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
+import com.postgres.errors.DbError
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.serialization.json.*
@@ -19,76 +24,96 @@ object DbConfig {
 
     private val log = LoggerFactory.getLogger(DbConfig::class.java)
 
-    fun fromEnv(serviceInstanceName: String): DbCreds {
-        log.info("Resolving database credentials (service=$serviceInstanceName)")
+    fun fromEnv(serviceInstanceName: String): Either<DbError, DbCreds> = either {
+        log.info("Resolving database credentials (service={})", serviceInstanceName)
+
         val vcap = System.getenv("VCAP_SERVICES")
+
         if (!vcap.isNullOrBlank()) {
-            val root = Json.parseToJsonElement(vcap).jsonObject
+            val root = try {
+                Json.parseToJsonElement(vcap).jsonObject
+            } catch (t: Throwable) {
+                raise(DbError.InvalidVcap("VCAP_SERVICES is not valid JSON", t))
+            }
+
             val services = root["postgresql-db"]?.jsonArray
-                ?: error("VCAP_SERVICES present, but no 'postgresql-db' entry found")
+                ?: raise(DbError.MissingVcapEntry("postgresql-db"))
 
             val match = services
                 .map { it.jsonObject }
                 .firstOrNull { it["name"]?.jsonPrimitive?.content == serviceInstanceName }
-                ?: services.first().jsonObject // fallback: first binding
+                ?: services.firstOrNull()?.jsonObject
+                ?: raise(DbError.InvalidVcap("postgresql-db array is empty"))
 
-            val creds = match["credentials"]!!.jsonObject
+            val creds = match["credentials"]?.jsonObject
+                ?: raise(DbError.InvalidVcap("Missing credentials object for postgresql-db binding"))
 
-            return DbCreds(
-                host = creds["hostname"]!!.jsonPrimitive.content,
-                port = creds["port"]!!.jsonPrimitive.content.toInt(),
-                dbName = creds["dbname"]!!.jsonPrimitive.content,
-                username = creds["username"]!!.jsonPrimitive.content,
-                password = creds["password"]!!.jsonPrimitive.content,
+            fun s(key: String): String =
+                creds[key]?.jsonPrimitive?.content
+                    ?: raise(DbError.MissingCredential(key))
+
+            fun int(key: String): Int {
+                val raw = s(key)
+                return raw.toIntOrNull() ?: raise(DbError.BadCredential(key, raw))
+            }
+
+            return@either DbCreds(
+                host = s("hostname"),
+                port = int("port"),
+                dbName = s("dbname"),
+                username = s("username"),
+                password = s("password"),
                 sslRootCertPem = creds["sslrootcert"]?.jsonPrimitive?.content
             )
         }
-
-        // Local fallback (example)
-        return DbCreds(
-            host = System.getenv("DB_HOST") ?: "localhost",
-            port = (System.getenv("DB_PORT") ?: "5432").toInt(),
-            dbName = System.getenv("DB_NAME") ?: "postgres",
-            username = System.getenv("DB_USER") ?: "postgres",
-            password = System.getenv("DB_PASS") ?: "postgres",
-            sslRootCertPem = null
-        )
+        else {
+            raise(DbError.MissingEnv("VCAP_SERVICES"))
+        }
     }
 
-    fun hikariDataSource(creds: DbCreds): HikariDataSource {
-
+    fun hikariDataSource(creds: DbCreds): Either<DbError, HikariDataSource> = either {
         val sslMode = System.getenv("PG_SSLMODE") ?: "verify-full"
 
-        val maxPool = (System.getenv("DB_POOL_MAX") ?: "10").toInt()
-        val minIdle = (System.getenv("DB_POOL_MIN") ?: "2").toInt()
-        val connTimeoutMs = (System.getenv("DB_POOL_CONN_TIMEOUT_MS") ?: "10000").toLong()
-        val idleTimeoutMs = (System.getenv("DB_POOL_IDLE_TIMEOUT_MS") ?: "600000").toLong()
-        val maxLifetimeMs = (System.getenv("DB_POOL_MAX_LIFETIME_MS") ?: "1800000").toLong()
+        fun envInt(name: String, default: Int): Int {
+            val raw = System.getenv(name) ?: default.toString()
+            return raw.toIntOrNull() ?: raise(DbError.BadCredential(name, raw))
+        }
+
+        fun envLong(name: String, default: Long): Long {
+            val raw = System.getenv(name) ?: default.toString()
+            return raw.toLongOrNull() ?: raise(DbError.BadCredential(name, raw))
+        }
+
+        val maxPool = envInt("DB_POOL_MAX", 10)
+        val minIdle = envInt("DB_POOL_MIN", 2)
+        val connTimeoutMs = envLong("DB_POOL_CONN_TIMEOUT_MS", 10_000)
+        val idleTimeoutMs = envLong("DB_POOL_IDLE_TIMEOUT_MS", 600_000)
+        val maxLifetimeMs = envLong("DB_POOL_MAX_LIFETIME_MS", 1_800_000)
+
+        ensure(maxPool >= 1) { DbError.BadCredential("DB_POOL_MAX", maxPool.toString()) }
+        ensure(minIdle >= 0) { DbError.BadCredential("DB_POOL_MIN", minIdle.toString()) }
 
         log.info(
             "Creating HikariDataSource: host={}, port={}, db={}, sslMode={}, maxPool={}",
-            creds.host,
-            creds.port,
-            creds.dbName,
-            sslMode,
-            maxPool
+            creds.host, creds.port, creds.dbName, sslMode, maxPool
         )
 
         val sslRootCertPath = creds.sslRootCertPem?.let { pem ->
-            val certFile = File("/tmp/btp-pg-root.crt")
-            certFile.writeText(pem)
-            certFile.absoluteFile
+            try {
+                val certFile = File("/tmp/btp-pg-root.crt")
+                certFile.writeText(pem)
+                certFile.absoluteFile
+            } catch (t: Throwable) {
+                raise(DbError.Io("Failed writing sslrootcert to /tmp", t))
+            }
         }
 
         val jdbcPostgresUrl = buildString {
             append("jdbc:postgresql://${creds.host}:${creds.port}/${creds.dbName}")
             append("?sslmode=$sslMode")
-
             if (sslRootCertPath != null) {
                 append("&sslrootcert=${sslRootCertPath.absolutePath}")
             }
-
-            // Optional but recommended on CF
             append("&tcpKeepAlive=true")
         }
 
@@ -108,8 +133,11 @@ object DbConfig {
             transactionIsolation = "TRANSACTION_READ_COMMITTED"
         }
 
-        cfg.validate()
-        return HikariDataSource(cfg)
+        try {
+            cfg.validate()
+            HikariDataSource(cfg)
+        } catch (t: Throwable) {
+            raise(DbError.Hikari("Failed creating/validating HikariDataSource", t))
+        }
     }
-
 }

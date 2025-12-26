@@ -54,5 +54,7 @@ dependencies {
     implementation(libs.java.jwt)
     implementation(libs.jwks.rsa)
     implementation(libs.arrow.core)
+    implementation(libs.swagger.core)
+    implementation(libs.swagger.openapi)
 
 }
