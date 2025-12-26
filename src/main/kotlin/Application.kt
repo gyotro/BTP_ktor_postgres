@@ -10,6 +10,9 @@ import org.koin.ktor.ext.getKoin
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 import com.postgres.di.appModule
+import com.postgres.plugins.configureErrors
+import com.postgres.plugins.configureMonitoring
+import com.postgres.plugins.configureSerialization
 import com.postgres.security.configureXsuaaAuthentication
 import io.ktor.server.application.ApplicationStopped
 

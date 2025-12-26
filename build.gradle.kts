@@ -53,5 +53,6 @@ dependencies {
     implementation(libs.ktor.server.status.pages)
     implementation(libs.java.jwt)
     implementation(libs.jwks.rsa)
+    implementation(libs.arrow.core)
 
 }

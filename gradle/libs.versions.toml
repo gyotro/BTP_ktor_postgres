@@ -8,6 +8,8 @@ logback = "1.4.14"
 postgres = "42.7.8"
 java-jwt = "4.5.0"
 jwks-rsa = "0.22.1"
+arrow-core = "2.2.1.1"
+
 
 [libraries]
 koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin" }
@@ -30,6 +32,11 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
 java-jwt = { module = "com.auth0:java-jwt", version.ref = "java-jwt" }
 jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "jwks-rsa" }
+arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow-core" }
+arrow-optics = { module = "io.arrow-kt:arrow-optics", version.ref = "arrow-core" }
+arrow-syntax = { module = "io.arrow-kt:arrow-syntax", version.ref = "arrow-core" }
+arrow-typeclasses = { module = "io.arrow-kt:arrow-typeclasses", version.ref = "arrow-core" }
+arrow-kt = { module = "io.arrow-kt:arrow-kt", version.ref = "arrow-core" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

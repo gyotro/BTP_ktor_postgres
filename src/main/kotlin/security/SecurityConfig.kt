@@ -1,8 +1,11 @@
 package com.postgres.security
 
+import com.postgres.errors.XsuaaConfigError
 import kotlinx.serialization.json.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import arrow.core.*
+import arrow.core.raise.either
 
 data class XsuaaCredentials(
     val url: String,
@@ -12,43 +15,47 @@ data class XsuaaCredentials(
     val identityzoneid: String? = null
 )
 
-fun readXsuaaCredentialsFromVcap(): XsuaaCredentials {
-    val log: Logger = LoggerFactory.getLogger("SecurityConfig")
-    val vcap = System.getenv("VCAP_SERVICES")
-        ?: error("VCAP_SERVICES not found. Are you running on Cloud Foundry / with correct env?")
+fun readXsuaaCredentialsFromVcap(): Either<XsuaaConfigError, XsuaaCredentials> =
+    Either.catch {
+        System.getenv("VCAP_SERVICES")
+    }.mapLeft {
+        XsuaaConfigError.MissingEnv("VCAP_SERVICES")
+    }.flatMap { vcap ->
+        if (vcap.isBlank())
+            XsuaaConfigError.MissingEnv("VCAP_SERVICES").left()
+        else
+            parseXsuaaFromVcap(vcap)
+    }
 
-    if (vcap.isNotBlank()) {
+private fun parseXsuaaFromVcap(vcap: String): Either<XsuaaConfigError, XsuaaCredentials> =
+    either {
+        val log: Logger = LoggerFactory.getLogger("SecurityConfig")
+
         val root = Json.parseToJsonElement(vcap).jsonObject
-        val xsuaa = root["xsuaa"]?.jsonArray
-            ?: error("VCAP_SERVICES present, but no 'xsuaa' entry found")
 
-        val first = xsuaa
-            .map { it.jsonObject }
-            .firstOrNull() ?: error("Invalid xsuaa binding structure.")
-        log.info("XSUAA binding: $first")
+        val xsuaaArray = root["xsuaa"]?.jsonArray
+            ?: raise(XsuaaConfigError.InvalidStructure("No 'xsuaa' entry found"))
 
-        val credentials = first["credentials"]?.jsonObject
-            ?: error("Invalid xsuaa binding structure.")
+        val binding = xsuaaArray
+            .firstOrNull()
+            ?.jsonObject
+            ?: raise(XsuaaConfigError.InvalidStructure("Empty xsuaa array"))
 
-        log.info("XSUAA credentials: $credentials")
-    //    log.info("XSUAA url: ${credentials["url"]}")
-        log.info("url type=${credentials["url"]?.let { it::class.qualifiedName }}")
-        log.info("XSUAA xsappname: ${credentials["xsappname"]}")
-        log.info("XSUAA clientid: ${credentials["clientid"]}")
-        log.info("XSUAA identityzone: ${credentials["identityzone"]}")
-        log.info("XSUAA identityzoneid: ${credentials["identityzoneid"]}")
+        log.info("XSUAA binding found")
 
-        fun s(key: String) = credentials[key]?.jsonPrimitive?.content ?: error("Missing xsuaa credential: $key")
+        val credentials = binding["credentials"]?.jsonObject
+            ?: raise(XsuaaConfigError.InvalidStructure("Missing credentials object"))
 
+        fun s(key: String): String =
+            credentials[key]?.jsonPrimitive?.content
+                ?: raise(XsuaaConfigError.MissingCredential(key))
 
-        return XsuaaCredentials(
+        XsuaaCredentials(
             url = s("url"),
             xsappname = s("xsappname"),
             clientid = s("clientid"),
-            identityzone = credentials["identityzone"] as? String,
-            identityzoneid = credentials["identityzoneid"] as? String
+            identityzone = credentials["identityzone"]?.jsonPrimitive?.content,
+            identityzoneid = credentials["identityzoneid"]?.jsonPrimitive?.content
         )
-    } else {
-        error("VCAP_SERVICES is empty")
     }
-}
+
